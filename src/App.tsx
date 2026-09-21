@@ -8,7 +8,18 @@ import { useNavigate } from "react-router-dom";
 import type { PROGRAMA } from "./compilador/ast";
 
 export default function App() {
-  const [codigo, setCodigo] = useState('');
+  const [codigo, setCodigo] = useState(`<!
+    int _x;
+    int _y;
+    _x = 3;
+    _y = 4;
+    int _z;
+    if( _x > _y ){
+        _z = _x @ _y;
+    } else {
+        _z = 10;
+    }
+¡>`);
   const [tokens, setTokens] = useState<Token[]>([]);
   const [parser, setParser] = useState<PROGRAMA | string>('');
   const [errors, setErrors] = useState<Token[]>([]);
