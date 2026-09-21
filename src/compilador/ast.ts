@@ -10,7 +10,6 @@ export class PROGRAMA implements ASTNode {
     constructor(declaraciones: DECLARACION[]) {
         this.body = declaraciones;
     }
-
 }
 
 export type DECLARACION = 
@@ -89,8 +88,9 @@ export type EXPRESION = TERMINO | DOBLE_EXPRESION;
 
 export class TERMINO implements ASTNode {
     public type: string = "TERMINO";
-    public valor: VARIABLE | NUMERO;
-    constructor(valor: VARIABLE | NUMERO) {
+    public valor: VARIABLE | NUMERO | BOOLEANO; 
+    
+    constructor(valor: VARIABLE | NUMERO | BOOLEANO) {
         this.valor = valor;
     }
 }
@@ -122,6 +122,15 @@ export class NUMERO implements ASTNode {
     public value: string;
 
     constructor(value: string) {
+        this.value = value;
+    }
+}
+
+export class BOOLEANO implements ASTNode {
+    public type: string = "BOOLEANO";
+    public value: 'true' | 'false';
+
+    constructor(value: 'true' | 'false') {
         this.value = value;
     }
 }

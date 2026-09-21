@@ -1,5 +1,5 @@
 import type { Token } from "../types"
-import { DECLARAR_VARIABLE, IF, PROGRAMA, VARIABLE, type DECLARACION, DOBLE_EXPRESION, NUMERO, TERMINO, ASIGNACION } from './ast';
+import { DECLARAR_VARIABLE, IF, PROGRAMA, VARIABLE, type DECLARACION, DOBLE_EXPRESION, NUMERO, TERMINO, ASIGNACION, WHILE, READ, PRINT, CADENA, BOOLEANO } from './ast';
 
 export class Parser {
     private tokens : Token[]
@@ -25,12 +25,10 @@ export class Parser {
 
     private PROGRAMA() : PROGRAMA {
         this.advance()
-
         this.eat({
             valor: '<!',
             type: 'INICIO_CODIGO'
         })
-
         const declaraciones : DECLARACION[] = []
         let declaracion
         while(this.token && this.token.type !== 'FIN_CODIGO' && !this.error){ 
@@ -38,9 +36,7 @@ export class Parser {
             if(declaracion)
                 declaraciones.push(declaracion)
         }
-        
         const programa = new PROGRAMA(declaraciones)
-
         this.eat({
             valor: '¡>',
             type: 'FIN_CODIGO'
@@ -54,7 +50,7 @@ export class Parser {
 
         if(this.token.valor === 'int' || this.token.valor === 'bool'){
             const dataType = this.token.valor
-            return this.declararVariable(dataType)
+            return this.declararVariable(dataType as 'int' | 'bool')
         }
 
         if(this.token.type === 'VARIABLE'){
@@ -65,9 +61,16 @@ export class Parser {
             switch (this.token.valor) {
                 case 'if':
                     return this.IF()
+                case 'while':
+                    return this.WHILE()
+                case 'read':
+                    return this.READ()
+                case 'print':
+                    return this.PRINT()
                 default:
+                    this.error = true
+                    this.msg = `Error de Sintaxis: Palabra reservada inesperada '${this.token.valor}' cerca de la posición ${this.posicion}`
                     return null
-                    break
             }
         }
         this.error = true
@@ -104,7 +107,6 @@ export class Parser {
     }
 
     private IF() : IF | null  {
-
         if(!this.canContinue())
             return null
         
@@ -143,6 +145,62 @@ export class Parser {
         return declaraciones
     }
 
+    private WHILE() : WHILE | null {
+        if(!this.canContinue()) return null
+        
+        this.eat({valor: 'while', type: 'RESERVADA'})
+        this.eat({valor: '(', type: 'PUNTO'})
+        
+        const condition = this.EXPRESION()
+        if(!condition) return null
+        
+        this.eat({valor: ')', type: 'PUNTO'})
+        this.eat({valor: '{', type: 'PUNTO'})
+        
+        const body = this.if_else_Branch()
+        if(!body) return null
+        
+        this.eat({valor: '}', type: 'PUNTO'})
+        
+        return new WHILE(condition, body)
+    }
+
+    private READ() : READ | null {
+        if(!this.canContinue()) return null
+        
+        this.eat({valor: 'read', type: 'RESERVADA'})
+        
+        if(!this.canContinue()) return null
+        const variable = new VARIABLE(this.token!.valor)
+        
+        this.eat({valor: '', type: 'VARIABLE'})
+        this.eat({valor: ';', type: 'PUNTO'})
+        
+        return new READ(variable)
+    }
+
+    private PRINT() : PRINT | null {
+        if(!this.canContinue()) return null
+        
+        this.eat({valor: 'print', type: 'RESERVADA'})
+        
+        let valorAImprimir;
+
+        if (this.token!.type === 'CADENA') {
+            valorAImprimir = new CADENA(this.token!.valor)
+            this.eat({valor: '', type: 'CADENA'})
+        } else {
+            valorAImprimir = this.TERMINO()
+        }
+        
+        if (!valorAImprimir) 
+            return null
+        
+        this.eat({valor: ';', type: 'PUNTO'})
+        
+        return new PRINT(valorAImprimir)
+    }
+
     private EXPRESION() : DOBLE_EXPRESION | TERMINO | null {
         if(!this.canContinue())
             return null
@@ -178,18 +236,28 @@ export class Parser {
     }
 
     private TERMINO() : TERMINO | null {
-        if(!this.canContinue())
-            return null
+        if(!this.canContinue()) return null
 
-        const valorToken = this.token!.valor
-        let valor : NUMERO | VARIABLE
+        let valor;
+        const tipoActual = this.token!.type;
+        const valorActual = this.token!.valor;
 
-        if(Number.isFinite(+valorToken)){
-            valor = new NUMERO(this.token!.valor)
+        if(tipoActual === 'NUMERO'){
+            valor = new NUMERO(valorActual)
             this.eat({valor: '', type: 'NUMERO'})
-        }else {
-            valor = new VARIABLE(this.token!.valor)
+        } 
+        else if(tipoActual === 'VARIABLE') {
+            valor = new VARIABLE(valorActual)
             this.eat({valor: '', type: 'VARIABLE'})
+        } 
+        else if (tipoActual === 'RESERVADA' && (valorActual === 'true' || valorActual === 'false')) {
+            valor = new BOOLEANO(valorActual) 
+            this.eat({valor: valorActual, type: 'RESERVADA'})
+        } 
+        else {
+            this.error = true
+            this.msg = `Error de Sintaxis: Se esperaba un TERMINO (Número, Variable, true o false) en la posición ${this.posicion}`
+            return null
         }
 
         return new TERMINO(valor)

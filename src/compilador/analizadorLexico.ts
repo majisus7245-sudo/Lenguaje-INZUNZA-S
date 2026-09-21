@@ -100,7 +100,7 @@ export class AnalizadorLexico {
     }
     public ejecutarReconocedores() : Token[]{
         const tokens : Token[] = []
-        const palabrasReservadas = ['if', 'else', 'read', 'print', 'while', 'int', 'bool']
+        const palabrasReservadas = ['if', 'else', 'read', 'print', 'while', 'int', 'bool', 'true', 'false']
 
         let transicion : {transicion : T, type: TypeToken} | null, input : string, char : string
         while(this.posicion < this.codigo.length){

@@ -5,7 +5,7 @@ type ParserProps = {
 }
 
 export default function Parser({parser} : ParserProps) {
-  const contenidoJson = typeof parser !== 'string' && parser ? JSON.stringify(parser, null, 2) : 'No hay datos del parser aún';
+  const contenidoJson = typeof parser !== 'string' && parser ? JSON.stringify(parser, null, 2) : parser;
 
   return (
     <div className="max-h-[60vh] overflow-auto rounded-lg bg-indigo-100 p-4 text-left">

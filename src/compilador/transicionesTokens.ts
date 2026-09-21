@@ -29,7 +29,9 @@ export const T_Numero: T = [
 
 export const T_Cadena: T = [
     { estado: 1, inputs: { "'": 2 } },  
-    { estado: 2, inputs: { letra: 2, digito: 2, espacio: 2, "'": 99 } }
+    { estado: 2, inputs: 
+        { letra: 2, digito: 2, espacio: 2, "'": 99 } 
+    }
 ]
 
 export const T_Operadores_Relacionales: T = [

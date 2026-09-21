@@ -5,16 +5,18 @@ import Error from './Error';
 import Parser from './Parser';
 import type { Token } from '../types';
 import type { PROGRAMA } from '../compilador/ast';
+import Semantica from './Semantica';
 
 type ModalProps = {
   errors: Token[];
   parser: PROGRAMA | string;
+  erroresSemantica: string[];
 };
 
-export default function Modal({ errors, parser }: ModalProps) {
+export default function Modal({ errors, parser, erroresSemantica }: ModalProps) {
   const [searchParams, setSearchParams] = useSearchParams();
   const modal = searchParams.get('modal');
-  const show = Boolean(modal && (modal === 'parser' || modal === 'error'));
+  const show = Boolean(modal && (modal === 'parser' || modal === 'error' || modal === 'semantica'));
 
   const handleClose = () => {
     const newParams = new URLSearchParams(searchParams);
@@ -63,16 +65,18 @@ export default function Modal({ errors, parser }: ModalProps) {
 
                 {/* Título dinámico */}
                 <Dialog.Title as="h3" className="font-bold text-2xl text-indigo-950 mb-4 border-b pb-2">
-                  {modal === 'error' ? 'Errores de Compilación' : 'Sintaxis / Parser'}
+                  {modal === 'error' ? 'Errores de Compilación' : modal === 'parser' ? 'Sintaxis / Parser' : modal === 'semantica' ? 'Semantica' : ''}
                 </Dialog.Title>
 
                 {/* Contenido dinámico */}
                 <div className="mt-4">
                   {modal === 'error' ? (
                     <Error errors={errors} />
-                  ) : (
+                  ) : modal === 'parser' ? (
                     <Parser parser={parser} />
-                  )}
+                  ) : modal === 'semantica' ? (
+                    <Semantica errores={erroresSemantica} />
+                  ) : ''}
                 </div>
 
               </Dialog.Panel>

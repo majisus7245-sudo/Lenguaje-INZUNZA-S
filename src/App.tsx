@@ -12,15 +12,18 @@ export default function App() {
   const [tokens, setTokens] = useState<Token[]>([]);
   const [parser, setParser] = useState<PROGRAMA | string>('');
   const [errors, setErrors] = useState<Token[]>([]);
+  const [errorsSemantica, setErrorsSemantica] = useState<string[]>([]);
   const navigate = useNavigate()
 
   const handleTokens = () => {
-    const { tokens, arbolParser} = compilar(codigo);
+    const { tokens, arbolParser, errores } = compilar(codigo);
 
     setTokens(tokens.filter(r => r.type !== 'ERROR'));
     setErrors(tokens.filter(r => r.type === 'ERROR'));
 
     setParser(arbolParser)
+
+    setErrorsSemantica(errores)
   };
 
   const handleModal = (type : string) => {
@@ -59,6 +62,12 @@ export default function App() {
             >
               Parser
             </button>
+            <button
+              onClick={() => handleModal('semantica')}
+              className="font-bold text-lg mb-4 text-indigo-900 border-2 border-indigo-900 hover:bg-indigo-900 hover:text-white transition hover:cursor-pointer rounded-2xl w-[50%] py-1"
+            >
+              Semantica
+            </button>
           </div>
         </section>
 
@@ -76,7 +85,7 @@ export default function App() {
 
       </main>
 
-      <Modal errors={errors} parser={parser} />
+      <Modal errors={errors} parser={parser} erroresSemantica={errorsSemantica} />
     </div>
   );
 }
