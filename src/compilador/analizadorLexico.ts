@@ -3,7 +3,7 @@ import { Operadores_Aritmeticos, Puntos, T_Cadena, T_Fin_Codigo, T_Inicio_Codigo
 
 export class AnalizadorLexico {
 
-    private codigo : string
+    private codigo : string 
     private posicion : number
     constructor(codigo : string){
         this.codigo = codigo
@@ -106,7 +106,6 @@ export class AnalizadorLexico {
         while(this.posicion < this.codigo.length){
 
             char = this.codigo[this.posicion]
-
             if(char === ' ' || char === '\n' || char === '\t' || char === '\r'){
                 this.incrementarPosicion()
                 continue
@@ -123,7 +122,6 @@ export class AnalizadorLexico {
             let isOperador = Operadores_Aritmeticos.find(oa => oa[char])
             
             if(isOperador && isOperador[char].valor !== this.codigo[this.posicion + 1]){
-                console.log('entro');
                 tokens.push(isOperador[char])
                 this.incrementarPosicion()
                 continue
@@ -133,7 +131,7 @@ export class AnalizadorLexico {
             transicion = this.getTransicion(input)
 
             if (!transicion) {
-                tokens.push({ type: 'ERROR', valor: `Caracter invalido: ${this.codigo[this.posicion]} \t en la posicion: ${this.posicion}` })
+                tokens.push({ type: 'ERROR', valor: `${this.codigo[this.posicion]}` })
                 this.incrementarPosicion()
                 continue
             }

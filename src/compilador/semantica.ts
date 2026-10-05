@@ -1,6 +1,6 @@
 import type { PROGRAMA, DECLARACION, DECLARAR_VARIABLE, ASIGNACION, IF, WHILE, READ, PRINT, EXPRESION, TERMINO, DOBLE_EXPRESION, VARIABLE } from "./ast"
 
-class TablaSimbolos {
+export class TablaSimbolos {
     private simbolos: Simbolo[]
     
     constructor() {
@@ -11,12 +11,16 @@ class TablaSimbolos {
         this.simbolos.push(simbolo)
     }
 
+    public getSimbolos(): Simbolo[] {
+        return this.simbolos
+    }
+
     public buscarSimbolo(nombre: string): Simbolo | undefined {
         return this.simbolos.find(simbolo => simbolo.getNombre() === nombre)
     }
 }
 
-class Simbolo {
+export class Simbolo {
     private nombre: string
     private tipo: 'int' | 'bool'
     private inicializada: boolean // Indica si la variable ha sido inicializada para no usarla antes de asignarle un valor
@@ -55,6 +59,10 @@ export class Semantica {
         this.errores = []
     }
 
+    public getTablaSimbolos(): TablaSimbolos {
+        return this.tablaSimbolos
+    }
+
     public analizar(): string[] {
         this.procesarBloque(this.programa.body)
         return this.errores
@@ -87,8 +95,9 @@ export class Semantica {
                     const tipoExpresion = this.evaluarTipoExpresion(asig.valor)
                     if (tipoExpresion !== 'error' && tipoExpresion !== sim.getTipo()) {
                         this.errores.push(`Error Semántico: Incompatibilidad de tipos. No se puede asignar un '${tipoExpresion}' a la variable '${nomVarAsig}' de tipo '${sim.getTipo()}'.`)
+                    } else {
+                        sim.setInicializada(true)
                     }
-                    sim.setInicializada(true)
                 }
                 break
 
@@ -139,8 +148,10 @@ export class Semantica {
         if (expr.type === "TERMINO") {
             const termino = expr as TERMINO
             
-            if (termino.valor.type === "NUMERO") return 'int'
-            if (termino.valor.type === "BOOLEANO") return 'bool'
+            if (termino.valor.type === "NUMERO") 
+                return 'int'
+            if (termino.valor.type === "BOOLEANO") 
+                return 'bool'
             
             if (termino.valor.type === "VARIABLE") {
                 const nomVar = (termino.valor as VARIABLE).variable
@@ -161,11 +172,11 @@ export class Semantica {
             const tipoIzq = this.evaluarTipoExpresion(dobleExpr.left)
             const tipoDer = this.evaluarTipoExpresion(dobleExpr.right)
 
-            if (tipoIzq === 'error' || tipoDer === 'error') return 'error'
+            if (tipoIzq === 'error' || tipoDer === 'error') 
+                return 'error'
 
             const op = dobleExpr.operator
 
-            // Operadores Aritméticos: esperan ser usados por dos int, devuelven int
             if (['@', '#', '&', '|'].includes(op)) {
                 if (tipoIzq !== 'int' || tipoDer !== 'int') {
                     this.errores.push(`Error Semántico: El operador '${op}' requiere operandos de tipo 'int'.`)
@@ -173,7 +184,6 @@ export class Semantica {
                 }
                 return 'int'
             }
-            // Operadores Relacionales: esperan ser usados por dos int, devuelven bool
             else if (['>', '<'].includes(op)) {
                 if (tipoIzq !== 'int' || tipoDer !== 'int') {
                     this.errores.push(`Error Semántico: El operador '${op}' requiere operandos de tipo 'int'.`)
@@ -181,7 +191,7 @@ export class Semantica {
                 }
                 return 'bool'
             }
-            // Operadores de Igualdad: esperan ser usados por dos int o dos bool, devuelven bool
+
             else if (['==', '!='].includes(op)) {
                 if (tipoIzq !== tipoDer) {
                     this.errores.push(`Error Semántico: El operador '${op}' no puede comparar '${tipoIzq}' con '${tipoDer}'.`)

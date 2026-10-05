@@ -14,11 +14,14 @@ export class Parser {
         this.error = false
         this.msg = ''
         this.programa = new PROGRAMA([])
+        console.log(tokens);
     }
 
     public iniciarParsing() : boolean {
 
         this.programa = this.PROGRAMA()
+
+        console.log(this.error);
 
         return !this.error
     }
@@ -46,19 +49,20 @@ export class Parser {
     }
 
     private declaraciones() : DECLARACION | null {
-        if (this.error || !this.token) return null
+        if (!this.canContinue()) 
+            return null
 
-        if(this.token.valor === 'int' || this.token.valor === 'bool'){
-            const dataType = this.token.valor
-            return this.declararVariable(dataType as 'int' | 'bool')
+        if(this.token!.valor === 'int' || this.token!.valor === 'bool'){
+            const dataType = this.token!.valor
+            return this.declararVariable(dataType)
         }
 
-        if(this.token.type === 'VARIABLE'){
+        if(this.token!.type === 'VARIABLE'){
             return this.asignacion()
         }
 
-        if(this.token.type === 'RESERVADA'){
-            switch (this.token.valor) {
+        if(this.token!.type === 'RESERVADA'){
+            switch (this.token!.valor) {
                 case 'if':
                     return this.IF()
                 case 'while':
@@ -69,7 +73,7 @@ export class Parser {
                     return this.PRINT()
                 default:
                     this.error = true
-                    this.msg = `Error de Sintaxis: Palabra reservada inesperada '${this.token.valor}' cerca de la posición ${this.posicion}`
+                    this.msg = `Error de Sintaxis: Palabra reservada inesperada '${this.token!.valor}' cerca de la posición ${this.posicion}`
                     return null
             }
         }
@@ -288,8 +292,7 @@ export class Parser {
             this.advance()
             return
         }
-        console.log(this.token, tokenEsperado);
-        this.msg = `Syntax Error: Se esperaba un token de tipo ${tokenEsperado.type} en la posicion ${this.posicion}`
+        this.msg = `Syntax Error: Se esperaba un token de tipo ${tokenEsperado.type} -> '${tokenEsperado.valor}' en la posicion ${this.posicion}`
         this.error = true
     }
 

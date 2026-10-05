@@ -1,5 +1,6 @@
 # Manuel de Jesus Inzunza Lara
 # Proyecto Lenguajes y Automatas 2
+# 13:00 - 14:00
 #    ------ Lenguaje INZUNZA'S ------
 # 
 # Primera entrega: gramatica del lenguaje

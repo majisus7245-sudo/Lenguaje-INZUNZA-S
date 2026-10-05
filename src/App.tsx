@@ -3,9 +3,11 @@ import Codigo from "./components/Codigo";
 import type { Token } from "./types";
 import Tokens from "./components/Tokens";
 import { compilar } from "./compilador";
-import Modal from "./components/Modal";
-import { useNavigate } from "react-router-dom";
+import Parser from "./components/Parser";
+import Semantica from "./components/Semantica";
 import type { PROGRAMA } from "./compilador/ast";
+import type { FilaCI } from "./compilador/codigoIntermedio";
+import CodigoIntermedio from "./components/CodigoIntermedio";
 
 export default function App() {
   const [codigo, setCodigo] = useState(`<!
@@ -22,24 +24,22 @@ export default function App() {
 ¡>`);
   const [tokens, setTokens] = useState<Token[]>([]);
   const [parser, setParser] = useState<PROGRAMA | string>('');
-  const [errors, setErrors] = useState<Token[]>([]);
   const [errorsSemantica, setErrorsSemantica] = useState<string[]>([]);
-  const navigate = useNavigate()
+  const [vistaResultado, setVistaResultado] = useState<'parser' | 'semantica' | null>(null);
+  const [compilado, setCompilado] = useState(false);
+  const [ci, setCi] = useState<FilaCI[] | null>(null);
 
   const handleTokens = () => {
-    const { tokens, arbolParser, errores } = compilar(codigo);
+    const { tokens, arbolParser, errores, codigoIntermedio } = compilar(codigo);
 
-    setTokens(tokens.filter(r => r.type !== 'ERROR'));
-    setErrors(tokens.filter(r => r.type === 'ERROR'));
+    setTokens(tokens);
 
     setParser(arbolParser)
 
     setErrorsSemantica(errores)
+    setCi(codigoIntermedio)
+    setCompilado(true)
   };
-
-  const handleModal = (type : string) => {
-    navigate(`/?modal=${type}`)
-  }
 
   return (
     <div className="h-screen flex flex-col overflow-hidden">
@@ -49,54 +49,56 @@ export default function App() {
         </h1>  
       </header>
 
-      <main className="p-4 grid grid-cols-3 grid-rows-2 gap-3 flex-1 min-h-0">
+      <main className="p-4 grid grid-cols-6 grid-rows-2 gap-3 flex-1 min-h-0">
 
-        <section className="bg-white text-center p-2 rounded-2xl flex flex-col h-full overflow-hidden">
+        <section className="col-span-2 bg-white text-center p-2 rounded-2xl flex flex-col h-full overflow-hidden">
           <Codigo codigo={codigo} setCodigo={setCodigo} />  
         </section>
         
-        <section className="bg-white text-center p-2 rounded-2xl flex flex-col h-full overflow-hidden">
+        <section className="col-span-2 bg-white text-center p-2 rounded-2xl flex flex-col h-full overflow-hidden">
           <Tokens handleTokens={handleTokens} tokens={tokens} />
         </section>
         
-        <section className="bg-white text-center p-2 rounded-2xl flex flex-col h-full overflow-hidden">
-          <div className="flex flex-col flex-1 justify-around items-center">
-            <button 
-              onClick={() => handleModal('error')}
-              className="font-bold text-lg mb-4 text-red-900 border-2 border-red-900 hover:bg-red-900 hover:text-white transition hover:cursor-pointer rounded-2xl w-[50%] py-1"
-            >
-              Errores
-            </button>
+        <section className="col-span-2 bg-white text-center p-2 rounded-2xl flex flex-col h-full overflow-hidden">
+          <div className="flex justify-center gap-3 shrink-0">
             <button
-              onClick={() => handleModal('parser')}
-              className="font-bold text-lg mb-4 text-indigo-900 border-2 border-indigo-900 hover:bg-indigo-900 hover:text-white transition hover:cursor-pointer rounded-2xl w-[50%] py-1"
+              onClick={() => setVistaResultado('parser')}
+              className={`font-bold text-lg border-2 border-indigo-900 transition hover:cursor-pointer rounded-2xl w-[45%] py-1 ${vistaResultado === 'parser' ? 'bg-indigo-900 text-white' : 'text-indigo-900 hover:bg-indigo-900 hover:text-white'}`}
             >
               Parser
             </button>
             <button
-              onClick={() => handleModal('semantica')}
-              className="font-bold text-lg mb-4 text-indigo-900 border-2 border-indigo-900 hover:bg-indigo-900 hover:text-white transition hover:cursor-pointer rounded-2xl w-[50%] py-1"
+              onClick={() => setVistaResultado('semantica')}
+              className={`font-bold text-lg border-2 border-indigo-900 transition hover:cursor-pointer rounded-2xl w-[45%] py-1 ${vistaResultado === 'semantica' ? 'bg-indigo-900 text-white' : 'text-indigo-900 hover:bg-indigo-900 hover:text-white'}`}
             >
               Semantica
             </button>
           </div>
+          <div className="flex-1 min-h-0 overflow-auto p-3 flex flex-col justify-center">
+            {!vistaResultado ? (
+              <p className="text-indigo-400 italic">Selecciona Parser o Semantica.</p>
+            ) : !compilado ? (
+              <p className="text-indigo-400 italic">Ejecuta Tokens para analizar el código.</p>
+            ) : vistaResultado === 'parser' ? (
+              <Parser parser={parser} />
+            ) : typeof parser === 'string' ? (
+              <p className="text-red-700">No se pudo realizar el análisis semántico porque hay un error en el parser: {parser}</p>
+            ) : (
+              <Semantica errores={errorsSemantica} />
+            )}
+          </div>
         </section>
 
-        <section className="bg-white text-center p-2 rounded-2xl flex flex-col h-full overflow-hidden">
+        <section className="col-span-3 bg-white text-center p-2 rounded-2xl flex flex-col h-full overflow-hidden">
+          <CodigoIntermedio ci={ci} compilado={compilado} errores={errorsSemantica} parserFallo={typeof parser === 'string'} />
+        </section>
+
+        <section className="col-span-3 bg-white text-center p-2 rounded-2xl flex flex-col h-full overflow-hidden">
           
-        </section>
-
-        <section className="bg-white text-center p-2 rounded-2xl flex flex-col h-full overflow-hidden">
-
-        </section>
-
-        <section className="bg-white text-center p-2 rounded-2xl flex flex-col h-full overflow-hidden">
-
         </section>
 
       </main>
 
-      <Modal errors={errors} parser={parser} erroresSemantica={errorsSemantica} />
     </div>
   );
 }

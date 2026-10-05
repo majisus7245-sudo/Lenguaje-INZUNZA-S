@@ -39,7 +39,7 @@ export default function Tokens({ handleTokens, tokens }: TokensProps) {
                   className="border-b border-indigo-100 hover:bg-indigo-100/50 transition-colors"
                 >
                   <td className="px-3 py-2">
-                    <span className="bg-indigo-900 text-white text-xs px-2 py-1 rounded-full whitespace-nowrap">
+                    <span className={`${token.type === 'ERROR' ? 'bg-red-900' : 'bg-indigo-900'} text-white text-xs px-2 py-1 rounded-full whitespace-nowrap`}>
                       {token.type}
                     </span>
                   </td>
