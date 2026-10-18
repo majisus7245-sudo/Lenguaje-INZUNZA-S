@@ -32,6 +32,8 @@ export type DiccionarioTokens = {
     [key: string]: Token
 }[]
 
-export type Parser = {
-  
+export type FilaASM = {
+    etiqueta: string
+    instruccion: string
+    operandos: string
 }

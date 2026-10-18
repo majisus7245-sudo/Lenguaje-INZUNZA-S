@@ -14,14 +14,11 @@ export class Parser {
         this.error = false
         this.msg = ''
         this.programa = new PROGRAMA([])
-        console.log(tokens);
     }
 
     public iniciarParsing() : boolean {
 
         this.programa = this.PROGRAMA()
-
-        console.log(this.error);
 
         return !this.error
     }
@@ -189,7 +186,6 @@ export class Parser {
         this.eat({valor: 'print', type: 'RESERVADA'})
         
         let valorAImprimir;
-
         if (this.token!.type === 'CADENA') {
             valorAImprimir = new CADENA(this.token!.valor)
             this.eat({valor: '', type: 'CADENA'})

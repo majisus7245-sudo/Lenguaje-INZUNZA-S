@@ -14,7 +14,7 @@ export class AnalizadorLexico {
             return 'espacio'
         if ("<!¡>=_&|'".includes(char)) 
             return char
-        if ("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz".includes(char)) 
+        if ("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz:".includes(char)) 
             return 'letra'
         if ("0123456789".includes(char)) 
             return 'digito'

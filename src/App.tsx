@@ -1,6 +1,6 @@
 import { useState } from "react";
 import Codigo from "./components/Codigo";
-import type { Token } from "./types";
+import type { FilaASM, Token } from "./types";
 import Tokens from "./components/Tokens";
 import { compilar } from "./compilador";
 import Parser from "./components/Parser";
@@ -13,13 +13,25 @@ export default function App() {
   const [codigo, setCodigo] = useState(`<!
     int _x;
     int _y;
-    _x = 3;
-    _y = 4;
+    read _x;
+    read _y;
+    print 'La variable x es: ';
+    print _x;
+    print 'La variable y es: ';
+    print _y;
     int _z;
     if( _x > _y ){
         _z = _x @ _y;
     } else {
         _z = 10;
+    }
+    print 'La variable z es ';
+    print _z;
+    print '::::::::::::: WHILE :::::::::::::::::';
+    while(_z < 20){
+      _z = _z @ 1;
+      print 'La variable z es ';
+      print _z; 
     }
 ¡>`);
   const [tokens, setTokens] = useState<Token[]>([]);
@@ -28,16 +40,18 @@ export default function App() {
   const [vistaResultado, setVistaResultado] = useState<'parser' | 'semantica' | null>(null);
   const [compilado, setCompilado] = useState(false);
   const [ci, setCi] = useState<FilaCI[] | null>(null);
+  const [ams, setASM] = useState< FilaASM[] | null>(null)
+  const [mostraCI, setMostrarCI] = useState(false)
 
   const handleTokens = () => {
-    const { tokens, arbolParser, errores, codigoIntermedio } = compilar(codigo);
-
-    setTokens(tokens);
-
+    const { tokens, arbolParser, errores, codigoIntermedio, ensamblador } = compilar(codigo);
+    setTokens(tokens)
+    setVistaResultado(null)
+    setMostrarCI(false)
     setParser(arbolParser)
-
     setErrorsSemantica(errores)
     setCi(codigoIntermedio)
+    setASM(ensamblador)
     setCompilado(true)
   };
 
@@ -90,7 +104,7 @@ export default function App() {
         </section>
 
         <section className="col-span-3 bg-white text-center p-2 rounded-2xl flex flex-col h-full overflow-hidden">
-          <CodigoIntermedio ci={ci} compilado={compilado} errores={errorsSemantica} parserFallo={typeof parser === 'string'} />
+          <CodigoIntermedio ci={ci} asm={ams} compilado={compilado} errores={errorsSemantica} parserFallo={typeof parser === 'string'} mostrar={mostraCI} setMostrar={setMostrarCI} />
         </section>
 
         <section className="col-span-3 bg-white text-center p-2 rounded-2xl flex flex-col h-full overflow-hidden">

@@ -1,3 +1,6 @@
+//Inzunza Lara Manuel de Jesus
+//LyA 2 13 - 14
+//Codigo Intermedio
 import type { TablaSimbolos } from "./semantica"
 
 export type FilaCI = {
