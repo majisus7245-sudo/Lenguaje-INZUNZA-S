@@ -1,6 +1,6 @@
 import { useState } from "react";
 import Codigo from "./components/Codigo";
-import type { FilaASM, Token } from "./types";
+import type { FilaASM, FilaCO, Token } from "./types";
 import Tokens from "./components/Tokens";
 import { compilar } from "./compilador";
 import Parser from "./components/Parser";
@@ -8,31 +8,21 @@ import Semantica from "./components/Semantica";
 import type { PROGRAMA } from "./compilador/ast";
 import type { FilaCI } from "./compilador/codigoIntermedio";
 import CodigoIntermedio from "./components/CodigoIntermedio";
+import CodigoObjeto from "./components/CodigoObjeto";
 
 export default function App() {
   const [codigo, setCodigo] = useState(`<!
     int _x;
     int _y;
-    read _x;
-    read _y;
-    print 'La variable x es: ';
-    print _x;
-    print 'La variable y es: ';
-    print _y;
+    _x = 2 & 2;
+    _y = 12 | 3;
     int _z;
     if( _x > _y ){
         _z = _x @ _y;
     } else {
-        _z = 10;
+        _z = _y # _x;
     }
-    print 'La variable z es ';
     print _z;
-    print '::::::::::::: WHILE :::::::::::::::::';
-    while(_z < 20){
-      _z = _z @ 1;
-      print 'La variable z es ';
-      print _z; 
-    }
 ¡>`);
   const [tokens, setTokens] = useState<Token[]>([]);
   const [parser, setParser] = useState<PROGRAMA | string>('');
@@ -41,17 +31,21 @@ export default function App() {
   const [compilado, setCompilado] = useState(false);
   const [ci, setCi] = useState<FilaCI[] | null>(null);
   const [ams, setASM] = useState< FilaASM[] | null>(null)
+  const [codigoObjeto, setCodigoObjeto] = useState<FilaCO[] | null>(null)
   const [mostraCI, setMostrarCI] = useState(false)
+  const [mostrarCO, setMostrarCO] = useState(false)
 
   const handleTokens = () => {
-    const { tokens, arbolParser, errores, codigoIntermedio, ensamblador } = compilar(codigo);
+    const { tokens, arbolParser, errores, codigoIntermedio, ensamblador, codigoObjeto } = compilar(codigo);
     setTokens(tokens)
     setVistaResultado(null)
     setMostrarCI(false)
+    setMostrarCO(false)
     setParser(arbolParser)
     setErrorsSemantica(errores)
     setCi(codigoIntermedio)
     setASM(ensamblador)
+    setCodigoObjeto(codigoObjeto)
     setCompilado(true)
   };
 
@@ -108,7 +102,14 @@ export default function App() {
         </section>
 
         <section className="col-span-3 bg-white text-center p-2 rounded-2xl flex flex-col h-full overflow-hidden">
-          
+          <CodigoObjeto
+            codigoObjeto={codigoObjeto}
+            compilado={compilado}
+            errores={errorsSemantica}
+            parserFallo={typeof parser === 'string'}
+            mostrar={mostrarCO}
+            setMostrar={setMostrarCO}
+          />
         </section>
 
       </main>

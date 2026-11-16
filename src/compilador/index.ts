@@ -3,7 +3,9 @@ import { PROGRAMA } from "./ast";
 import { Parser } from "./parser";
 import { Semantica } from "./semantica";
 import { GeneradorCodigoIntermedio, type FilaCI } from "./codigoIntermedio";
-import { GeneradorEnsamblador, type FilaASM } from "./ensamblador";
+import { GeneradorEnsamblador } from "./ensamblador";
+import { GeneradorCodigoObjeto } from "./codigoObjeto";
+import type { FilaASM, FilaCO } from "../types";
 
 export function compilar(codigo : string){
     
@@ -18,6 +20,7 @@ export function compilar(codigo : string){
     let errores : string[] = []
     let codigoIntermedio : FilaCI[] | null = null
     let ensamblador : FilaASM[] | null = null
+    let codigoObjeto : FilaCO[] | null = null
     if(arbolParser instanceof PROGRAMA){
         semantica = new Semantica(arbolParser)
         errores = semantica.analizar()
@@ -25,6 +28,7 @@ export function compilar(codigo : string){
         if(errores.length === 0){
             codigoIntermedio = new GeneradorCodigoIntermedio(semantica.getTablaSimbolos()).generarCodigoIntermedio()
             ensamblador = new GeneradorEnsamblador(arbolParser, codigoIntermedio).generar()
+            codigoObjeto = new GeneradorCodigoObjeto(ensamblador).generar()
         }
     }
 
@@ -33,6 +37,7 @@ export function compilar(codigo : string){
         arbolParser,
         errores,
         codigoIntermedio,
-        ensamblador
+        ensamblador,
+        codigoObjeto
     }
 }

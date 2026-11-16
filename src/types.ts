@@ -37,3 +37,18 @@ export type FilaASM = {
     instruccion: string
     operandos: string
 }
+
+// Fila ya adaptada para mostrarse en la tabla de Codigo intermedio.
+export type FilaVista = {
+    nombre: string
+    operacion: string
+    atributos: string
+}
+
+// Fila de la tabla de Codigo objeto.
+export type FilaCO = {
+    segmento: "DATOS" | "CODIGO"
+    direccion: string
+    contenido: string
+    hex: string
+}

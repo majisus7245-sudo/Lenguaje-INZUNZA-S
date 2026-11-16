@@ -168,22 +168,11 @@ export class GeneradorEnsamblador {
         this.emitirEtiqueta(etiquetaFin)
     }
 
-    // ── READ Actualizado (Soporta enteros y booleanos según la tabla CI) ──
     private generarRead(r: READ) {
         const destino = r.variable.variable
-
-        if (this.esByte(destino)) {
-            // Si es booleano (DB), leemos un solo dígito/carácter (ej. 0 o 1)
-            this.emitir("MOV", "AH, 01H")
-            this.emitir("INT", "21H")
-            this.emitir("SUB", "AL, 30H")
-            this.emitir("MOV", `${destino}, AL`)
-        } else {
-            // Si es entero (DW), llamamos a la rutina LEER_NUM para soportar varios dígitos
-            this.emitir("CALL", "LEER_NUM")
-            this.emitir("MOV", `${destino}, AX`)
-            this.usaLeerNumero = true
-        }
+        this.emitir("CALL", "LEER_NUM")
+        this.emitir("MOV", `${destino}, ${this.esByte(destino) ? "AL" : "AX"}`)
+        this.usaLeerNumero = true
     }
 
     private generarPrint(p: PRINT) {
@@ -217,16 +206,6 @@ export class GeneradorEnsamblador {
         this.emitir("PUSH", "BX")
         this.emitir("PUSH", "CX")
         this.emitir("PUSH", "DX")
-
-        this.emitir("CMP", "AX, 0")
-        this.emitir("JGE", "IN_POSITIVO")
-        this.emitir("PUSH", "AX")
-        this.emitir("MOV", "DL, '-'")
-        this.emitir("MOV", "AH, 02H")
-        this.emitir("INT", "21H")
-        this.emitir("POP", "AX")
-        this.emitir("NEG", "AX")
-        this.emitirEtiqueta("IN_POSITIVO")
 
         this.emitir("MOV", "CX, 0")
         this.emitir("MOV", "BX, 10")
