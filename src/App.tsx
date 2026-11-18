@@ -1,6 +1,6 @@
 import { useState } from "react";
 import Codigo from "./components/Codigo";
-import type { FilaASM, FilaCO, Token } from "./types";
+import type { FilaASMConId, FilaCOConId, Token } from "./types";
 import Tokens from "./components/Tokens";
 import { compilar } from "./compilador";
 import Parser from "./components/Parser";
@@ -30,10 +30,12 @@ export default function App() {
   const [vistaResultado, setVistaResultado] = useState<'parser' | 'semantica' | null>(null);
   const [compilado, setCompilado] = useState(false);
   const [ci, setCi] = useState<FilaCI[] | null>(null);
-  const [ams, setASM] = useState< FilaASM[] | null>(null)
-  const [codigoObjeto, setCodigoObjeto] = useState<FilaCO[] | null>(null)
+  const [ams, setASM] = useState< FilaASMConId[] | null>(null)
+  const [codigoObjeto, setCodigoObjeto] = useState<FilaCOConId[] | null>(null)
   const [mostraCI, setMostrarCI] = useState(false)
   const [mostrarCO, setMostrarCO] = useState(false)
+  // IDs: fila seleccionada para relacionar el Código intermedio con el Código objeto
+  const [idSeleccionado, setIdSeleccionado] = useState<number | null>(null)
 
   const handleTokens = () => {
     const { tokens, arbolParser, errores, codigoIntermedio, ensamblador, codigoObjeto } = compilar(codigo);
@@ -41,6 +43,7 @@ export default function App() {
     setVistaResultado(null)
     setMostrarCI(false)
     setMostrarCO(false)
+    setIdSeleccionado(null)
     setParser(arbolParser)
     setErrorsSemantica(errores)
     setCi(codigoIntermedio)
@@ -98,7 +101,7 @@ export default function App() {
         </section>
 
         <section className="col-span-3 bg-white text-center p-2 rounded-2xl flex flex-col h-full overflow-hidden">
-          <CodigoIntermedio ci={ci} asm={ams} compilado={compilado} errores={errorsSemantica} parserFallo={typeof parser === 'string'} mostrar={mostraCI} setMostrar={setMostrarCI} />
+          <CodigoIntermedio ci={ci} asm={ams} compilado={compilado} errores={errorsSemantica} parserFallo={typeof parser === 'string'} mostrar={mostraCI} setMostrar={setMostrarCI} idSeleccionado={idSeleccionado} setIdSeleccionado={setIdSeleccionado} />
         </section>
 
         <section className="col-span-3 bg-white text-center p-2 rounded-2xl flex flex-col h-full overflow-hidden">
@@ -109,6 +112,8 @@ export default function App() {
             parserFallo={typeof parser === 'string'}
             mostrar={mostrarCO}
             setMostrar={setMostrarCO}
+            idSeleccionado={idSeleccionado}
+            setIdSeleccionado={setIdSeleccionado}
           />
         </section>
 

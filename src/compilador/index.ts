@@ -5,7 +5,7 @@ import { Semantica } from "./semantica";
 import { GeneradorCodigoIntermedio, type FilaCI } from "./codigoIntermedio";
 import { GeneradorEnsamblador } from "./ensamblador";
 import { GeneradorCodigoObjeto } from "./codigoObjeto";
-import type { FilaASM, FilaCO } from "../types";
+import type { FilaASMConId, FilaCOConId } from "../types";
 
 export function compilar(codigo : string){
     
@@ -19,16 +19,19 @@ export function compilar(codigo : string){
     let semantica : Semantica | null = null
     let errores : string[] = []
     let codigoIntermedio : FilaCI[] | null = null
-    let ensamblador : FilaASM[] | null = null
-    let codigoObjeto : FilaCO[] | null = null
+    let ensamblador : FilaASMConId[] | null = null
+    let codigoObjeto : FilaCOConId[] | null = null
     if(arbolParser instanceof PROGRAMA){
         semantica = new Semantica(arbolParser)
         errores = semantica.analizar()
 
         if(errores.length === 0){
             codigoIntermedio = new GeneradorCodigoIntermedio(semantica.getTablaSimbolos()).generarCodigoIntermedio()
-            ensamblador = new GeneradorEnsamblador(arbolParser, codigoIntermedio).generar()
-            codigoObjeto = new GeneradorCodigoObjeto(ensamblador).generar()
+            const filasASM = new GeneradorEnsamblador(arbolParser, codigoIntermedio).generar()
+            // generarConIds relaciona cada fila del ensamblador con los bytes que produjo
+            const conIds = new GeneradorCodigoObjeto(filasASM).generarConIds()
+            ensamblador = conIds.asm
+            codigoObjeto = conIds.co
         }
     }
 

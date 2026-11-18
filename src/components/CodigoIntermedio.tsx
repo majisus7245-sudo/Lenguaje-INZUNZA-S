@@ -1,21 +1,26 @@
-import { useState } from "react"
+import { useRef, useState } from "react"
 import type { FilaCI } from "../compilador/codigoIntermedio"
-import type { FilaASM } from "../types"
-import { filasASMComoVista, formatearASM } from "../utils"
+import type { FilaASMConId } from "../types"
+import { alternarSeleccion, claseFilaConId, filasASMComoVista, formatearASM, useDesplazarASeleccion } from "../utils"
 
 type Props = {
   // Se mantiene en la interfaz por compatibilidad con App; la tabla muestra el ASM.
   ci: FilaCI[] | null
-  asm: FilaASM[] | null
+  asm: FilaASMConId[] | null
   compilado: boolean
   errores: string[]
   parserFallo: boolean
   mostrar: boolean
   setMostrar: React.Dispatch<React.SetStateAction<boolean>>
+  // IDs: fila seleccionada, compartida con el Código objeto
+  idSeleccionado: number | null
+  setIdSeleccionado: React.Dispatch<React.SetStateAction<number | null>>
 }
 
-export default function CodigoIntermedio({ asm, compilado, errores, parserFallo, mostrar, setMostrar }: Props) {
+export default function CodigoIntermedio({ asm, compilado, errores, parserFallo, mostrar, setMostrar, idSeleccionado, setIdSeleccionado }: Props) {
   const [copiado, setCopiado] = useState(false)
+  const contenedorRef = useRef<HTMLDivElement>(null)
+  useDesplazarASeleccion(contenedorRef, idSeleccionado)
 
   const textoASM = asm ? formatearASM(asm) : ""
   const filas = asm ? filasASMComoVista(asm) : []
@@ -62,7 +67,7 @@ export default function CodigoIntermedio({ asm, compilado, errores, parserFallo,
     contenido = <p className="text-red-700">No se generó el ensamblador: corrige los errores semánticos.</p>
   } else if (asm) {
     contenido = (
-      <div className="w-full h-full border-2 border-indigo-100 rounded-lg overflow-auto bg-slate-50 text-left">
+      <div ref={contenedorRef} className="w-full h-full border-2 border-indigo-100 rounded-lg overflow-auto bg-slate-50 text-left">
         {filas.length === 0 ? (
           <div className="h-full flex items-center justify-center text-indigo-300 italic">
             No se generó código ensamblador.
@@ -71,6 +76,7 @@ export default function CodigoIntermedio({ asm, compilado, errores, parserFallo,
           <table className="w-full text-sm">
             <thead className="bg-indigo-200 text-indigo-900 sticky top-0 shadow-sm">
               <tr>
+                <th className="px-3 py-2 font-semibold">ID</th>
                 <th className="px-3 py-2 font-semibold">Nombre</th>
                 <th className="px-3 py-2 font-semibold">Operación</th>
                 <th className="px-3 py-2 font-semibold">Atributos</th>
@@ -78,7 +84,13 @@ export default function CodigoIntermedio({ asm, compilado, errores, parserFallo,
             </thead>
             <tbody>
               {filas.map((f, i) => (
-                <tr key={i} className="border-b border-indigo-100 font-mono text-indigo-800 font-medium">
+                <tr
+                  key={i}
+                  data-id={asm[i].id ?? undefined}
+                  onClick={() => alternarSeleccion(asm[i].id, setIdSeleccionado)}
+                  className={`border-b border-indigo-100 font-mono text-indigo-800 font-medium ${claseFilaConId(asm[i].id, idSeleccionado)}`}
+                >
+                  <td className="px-3 py-2 text-indigo-400">{asm[i].id ?? ""}</td>
                   <td className="px-3 py-2 whitespace-pre">{f.nombre}</td>
                   <td className="px-3 py-2 whitespace-pre">{f.operacion}</td>
                   <td className="px-3 py-2 whitespace-pre">{f.atributos}</td>

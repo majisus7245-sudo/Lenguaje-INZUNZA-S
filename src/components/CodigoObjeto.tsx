@@ -1,18 +1,23 @@
-import { useState } from "react"
-import type { FilaCO } from "../types"
-import { formatearCO } from "../utils"
+import { useRef, useState } from "react"
+import type { FilaCOConId } from "../types"
+import { alternarSeleccion, claseFilaConId, formatearCO, useDesplazarASeleccion } from "../utils"
 
 type Props = {
-  codigoObjeto: FilaCO[] | null
+  codigoObjeto: FilaCOConId[] | null
   compilado: boolean
   errores: string[]
   parserFallo: boolean
   mostrar: boolean
   setMostrar: React.Dispatch<React.SetStateAction<boolean>>
+  // IDs: fila seleccionada, compartida con el Código intermedio
+  idSeleccionado: number | null
+  setIdSeleccionado: React.Dispatch<React.SetStateAction<number | null>>
 }
 
-export default function CodigoObjeto({ codigoObjeto, compilado, errores, parserFallo, mostrar, setMostrar }: Props) {
+export default function CodigoObjeto({ codigoObjeto, compilado, errores, parserFallo, mostrar, setMostrar, idSeleccionado, setIdSeleccionado }: Props) {
   const [copiado, setCopiado] = useState(false)
+  const contenedorRef = useRef<HTMLDivElement>(null)
+  useDesplazarASeleccion(contenedorRef, idSeleccionado)
 
   const texto = codigoObjeto ? formatearCO(codigoObjeto) : ""
 
@@ -57,7 +62,7 @@ export default function CodigoObjeto({ codigoObjeto, compilado, errores, parserF
     contenido = <p className="text-red-700">No se generó el código objeto: corrige los errores semánticos.</p>
   } else if (codigoObjeto) {
     contenido = (
-      <div className="w-full h-full border-2 border-indigo-100 rounded-lg overflow-auto bg-slate-50 text-left">
+      <div ref={contenedorRef} className="w-full h-full border-2 border-indigo-100 rounded-lg overflow-auto bg-slate-50 text-left">
         {codigoObjeto.length === 0 ? (
           <div className="h-full flex items-center justify-center text-indigo-300 italic">
             No se generó código objeto.
@@ -66,6 +71,7 @@ export default function CodigoObjeto({ codigoObjeto, compilado, errores, parserF
           <table className="w-full text-sm">
             <thead className="bg-indigo-200 text-indigo-900 sticky top-0 shadow-sm">
               <tr>
+                <th className="px-3 py-2 font-semibold">ID</th>
                 <th className="px-3 py-2 font-semibold">Segmento</th>
                 <th className="px-3 py-2 font-semibold">Dirección</th>
                 <th className="px-3 py-2 font-semibold">Contenido</th>
@@ -74,7 +80,13 @@ export default function CodigoObjeto({ codigoObjeto, compilado, errores, parserF
             </thead>
             <tbody>
               {codigoObjeto.map((f, i) => (
-                <tr key={i} className="border-b border-indigo-100 font-mono text-indigo-800 font-medium">
+                <tr
+                  key={i}
+                  data-id={f.id}
+                  onClick={() => alternarSeleccion(f.id, setIdSeleccionado)}
+                  className={`border-b border-indigo-100 font-mono text-indigo-800 font-medium ${claseFilaConId(f.id, idSeleccionado)}`}
+                >
+                  <td className="px-3 py-2 text-indigo-400">{f.id}</td>
                   <td className="px-3 py-2">{f.segmento}</td>
                   <td className="px-3 py-2 whitespace-pre">{f.direccion}</td>
                   <td className="px-3 py-2 whitespace-pre">{f.contenido}</td>

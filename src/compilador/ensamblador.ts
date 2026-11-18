@@ -334,17 +334,11 @@ export class GeneradorEnsamblador {
         this.comentario(`operador ${op} no soportado`)
     }
 
+    // EXPRESION -> TERMINO OPERADOR TERMINO: ambos lados siempre son términos.
+    // Carga el término izquierdo en AX y devuelve cómo usar el derecho (número, variable o BX).
     private prepararDerecho(d: DOBLE_EXPRESION, inmediatoOk: boolean): string {
-        if (d.right.type === "DOBLE_EXPRESION") {
-            this.evaluarEnAX(d.right)
-            this.emitir("PUSH", "AX")
-            this.evaluarEnAX(d.left)
-            this.emitir("POP", "BX")
-            return "BX"
-        }
-
-        this.evaluarEnAX(d.left)
-        const der = d.right as TERMINO
+        this.cargar("AX", d.left)
+        const der = d.right
 
         if (this.esLiteral(der)) {
             if (inmediatoOk) return this.literal(der)

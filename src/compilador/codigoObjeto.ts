@@ -1,8 +1,7 @@
 // Inzunza Lara Manuel de Jesus
 // LyA 2 13 - 14
-// Generación de código objeto (x86 de 16 bits) a partir del código ensamblador.
 
-import type { FilaASM, FilaCO } from "../types"
+import type { FilaASM, FilaASMConId, FilaCO, FilaCOConId } from "../types"
 
 type Segmento = "DATOS" | "CODIGO"
 
@@ -51,22 +50,27 @@ const DIRECTIVAS = new Set([
     ".STARTUP", ".EXIT", "PROC", "ENDP", "END"
 ])
 
+// Arma el byte ModRM juntando sus campos: mod (2 bits) | reg (3 bits) | r/m (3 bits).
 function modrm(mod: number, reg: number, rm: number): number {
     return (mod << 6) | (reg << 3) | rm
 }
 
+// Separa un valor de 16 bits en 2 bytes en little-endian (parte baja primero, luego parte alta).
 function bytes16(valor: number): number[] {
     return [valor & 0xFF, (valor >> 8) & 0xFF]
 }
 
+// Devuelve los bytes de un dato inmediato: 1 byte si es de 8 bits o 2 bytes si es de 16 bits.
 function bytesInmediato(valor: number, bits: 8 | 16): number[] {
     return bits === 8 ? [valor & 0xFF] : bytes16(valor)
 }
 
+// Indica si un número cabe en un byte con signo (-128 a 127), por ejemplo un salto corto.
 function cabeEn8(valor: number): boolean {
     return valor >= -128 && valor <= 127
 }
 
+// Convierte texto a número: hexadecimal con H (2000H), con 0X, o decimal. Devuelve null si no es número.
 function parsearNumero(texto: string): number | null {
     if (/^[0-9A-F]+H$/.test(texto)) return parseInt(texto.slice(0, -1), 16)
     if (/^0X[0-9A-F]+$/.test(texto)) return parseInt(texto.slice(2), 16)
@@ -74,6 +78,7 @@ function parsearNumero(texto: string): number | null {
     return null
 }
 
+// Separa los operandos por comas, sin cortar las comas que están dentro de una cadena entre comillas.
 function dividedor(texto: string): string[] {
     const partes: string[] = []
     let actual = ""
@@ -101,6 +106,7 @@ function dividedor(texto: string): string[] {
     return partes
 }
 
+// Interpreta lo que hay dentro de [ ]: registros base/índice (BX, BP, SI, DI) y desplazamiento numérico.
 function parsearMemoria(contenido: string, simbolos: MapaSimbolos): Operando {
     const partes = contenido.split("+").map(p => p.trim()).filter(Boolean)
     let base: string | undefined
@@ -119,6 +125,8 @@ function parsearMemoria(contenido: string, simbolos: MapaSimbolos): Operando {
     return { tipo: "mem", base, index, disp }
 }
 
+// Clasifica un operando: registro (8/16 bits), registro de segmento, número inmediato o memoria.
+// Si es el nombre de una variable, la trata como memoria con su dirección y tamaño.
 function parsearOperando(texto: string, simbolos: MapaSimbolos, tamanos?: MapaTamanos): Operando {
     const t = texto.trim().toUpperCase()
     if (REG8[t] !== undefined) return { tipo: "reg", nombre: t, bits: 8, codigo: REG8[t] }
@@ -130,6 +138,9 @@ function parsearOperando(texto: string, simbolos: MapaSimbolos, tamanos?: MapaTa
     return { tipo: "mem", disp: simbolos.get(t) ?? 0, simbolo: t, bits: tamanos?.get(t) }
 }
 
+// Genera el ModRM de un operando de memoria y sus bytes de desplazamiento:
+// variable sola -> dirección directa (mod 00, r/m 110); sin desplazamiento -> mod 00;
+// desplazamiento de 8 bits -> mod 01; de 16 bits -> mod 10.
 function modrmMemoria(op: Extract<Operando, { tipo: "mem" }>, reg: number): number[] {
     if (!op.base && !op.index) {
         return [modrm(0, reg, 6), ...bytes16(op.disp)]
@@ -143,6 +154,7 @@ function modrmMemoria(op: Extract<Operando, { tipo: "mem" }>, reg: number): numb
     return [modrm(2, reg, rm), ...bytes16(op.disp)]
 }
 
+// Genera el ModRM de cualquier operando: si es registro usa mod 11, si es memoria usa modrmMemoria.
 function modrmOperando(op: Operando, reg: number): number[] {
     if (op.tipo === "reg") return [modrm(3, reg, op.codigo)]
     if (op.tipo === "mem") return modrmMemoria(op, reg)
@@ -150,10 +162,13 @@ function modrmOperando(op: Operando, reg: number): number[] {
     return [modrm(3, reg, 0)]
 }
 
+// Indica si la línea es una directiva o comentario (.DATA, PROC, END...), que no genera bytes.
 function esDirectiva(instruccion: string): boolean {
     return DIRECTIVAS.has(instruccion) || instruccion.startsWith(";") || instruccion === ""
 }
 
+// Convierte una declaración DB/DW en bytes del segmento de datos: números, cadenas (código ASCII)
+// y "?" (byte sin inicializar, marcado con -1).
 function bytesDeDatos(instruccion: string, operandos: string): number[] {
     const valores = dividedor(operandos)
     const resultado: number[] = []
@@ -184,6 +199,7 @@ export class GeneradorCodigoObjeto {
     // Tamaño de cada variable según su directiva: DB = 8 bits, DW = 16 bits.
     private tamanos: MapaTamanos = new Map()
 
+    // Recibe las filas del ensamblador y registra el tamaño de cada variable declarada.
     constructor(filas: FilaASM[]) {
         this.filas = filas
         filas.forEach(f => {
@@ -194,6 +210,8 @@ export class GeneradorCodigoObjeto {
         })
     }
 
+    // Punto de entrada: ejecuta las dos pasadas y devuelve la tabla de código objeto.
+    // Si algún salto corto no alcanza su destino, lo cambia a salto largo (near) y repite.
     public generar(): FilaCO[] {
         for (let intento = 0; intento < 4; intento++) {
             this.saltosFueraDeRango.clear()
@@ -241,6 +259,7 @@ export class GeneradorCodigoObjeto {
         let datos = 0
         let codigo = 0
         let segmento: Segmento = "CODIGO"
+        this.origenBytes = [] // IDs: se reinicia en cada segunda pasada
 
         this.filas.forEach((f, indice) => {
             const instr = f.instruccion.toUpperCase()
@@ -252,6 +271,7 @@ export class GeneradorCodigoObjeto {
             const bytes = this.codificar(f, simbolos, etiquetas, direccion, indice)
 
             bytes.forEach((byte, desplazamiento) => {
+                this.origenBytes.push(indice) // IDs: fila del ensamblador que generó este byte
                 filasCO.push({
                     segmento,
                     direccion: formatearDireccion(direccion + desplazamiento),
@@ -267,6 +287,7 @@ export class GeneradorCodigoObjeto {
         return { filasCO }
     }
 
+    // Traduce una fila de ensamblador a sus bytes de código máquina según el tipo de instrucción.
     private codificar(
         f: FilaASM,
         simbolos: MapaSimbolos,
@@ -319,6 +340,8 @@ export class GeneradorCodigoObjeto {
         return []
     }
 
+    // Codifica MOV en todas sus formas: inmediato a registro (B0/B8), registro a registro (88/89),
+    // memoria a registro (8A/8B), con segmentos (8C/8E) e inmediato a memoria (C6/C7).
     private codificarMov(a: Operando | undefined, b: Operando | undefined): number[] {
         if (!a || !b) return []
 
@@ -352,6 +375,8 @@ export class GeneradorCodigoObjeto {
         return [bits === 8 ? 0x88 : 0x89, ...modrmOperando(a, b.tipo === "reg" ? b.codigo : 0)]
     }
 
+    // Codifica las operaciones aritméticas y lógicas (ADD, SUB, AND, OR, XOR, CMP, ADC, SBB):
+    // con número usa la forma corta del acumulador o el grupo 80/81/83; con registros o memoria usa base + d + w.
     private codificarAlu(instr: string, a: Operando | undefined, b: Operando | undefined): number[] {
         if (!a || !b) return []
         const { base, ext } = ALU[instr]
@@ -377,6 +402,8 @@ export class GeneradorCodigoObjeto {
         return [base + (bits === 8 ? 0 : 1), ...modrmOperando(a, b.tipo === "reg" ? b.codigo : 0)]
     }
 
+    // Codifica JMP, saltos condicionales (JE, JLE...) y LOOP con desplazamiento relativo:
+    // destino - dirección de la instrucción siguiente. Marca los saltos cortos que no alcanzan.
     private codificarSalto(
         instr: string,
         etiqueta: string | undefined,
@@ -412,17 +439,57 @@ export class GeneradorCodigoObjeto {
         return [0x70 + codigoSalto, rel & 0xFF]
     }
 
+    // Codifica CALL (E8) con un desplazamiento relativo de 16 bits hacia el procedimiento.
     private codificarLlamada(etiqueta: string | undefined, etiquetas: MapaSimbolos, direccion: number): number[] {
         if (!etiqueta) return []
         const destino = etiquetas.get(etiqueta.trim().toUpperCase()) ?? 0
         return [0xE8, ...bytes16(destino - (direccion + 3))]
     }
+
+    // ===================================================================
+    // IDs para relacionar el Código intermedio con el Código objeto
+    // ===================================================================
+
+    // Para cada byte generado, el índice de la fila del ensamblador de la que salió.
+    private origenBytes: number[] = []
+
+    // Igual que generar(), pero devuelve el ensamblador y el código objeto con IDs
+    // para poder relacionar cada instrucción con sus bytes.
+    public generarConIds(): { asm: FilaASMConId[]; co: FilaCOConId[] } {
+        const co = this.generar()
+        return asignarIds(this.filas, co, this.origenBytes)
+    }
 }
 
+// Muestra una dirección como 16 bits en grupos de 4 (ej. 0000 0000 0001 0101).
 function formatearDireccion(valor: number): string {
     return valor.toString(2).padStart(16, "0").match(/.{4}/g)?.join(" ") ?? "0000 0000 0000 0000"
 }
 
+// Muestra un byte como 8 bits en grupos de 4 (ej. 1000 1011).
 function formatearByte(byte: number): string {
     return byte.toString(2).padStart(8, "0").match(/.{4}/g)?.join(" ") ?? "0000 0000"
+}
+
+// ===================================================================
+// IDs para relacionar el Código intermedio con el Código objeto
+// ===================================================================
+
+// Asigna IDs consecutivos (1, 2, 3...) solo a las filas del ensamblador que generaron bytes,
+// en el mismo orden en que aparecen. Cada byte del código objeto recibe el ID de su fila de origen.
+function asignarIds(
+    asm: FilaASM[],
+    co: FilaCO[],
+    origenBytes: number[]
+): { asm: FilaASMConId[]; co: FilaCOConId[] } {
+    const idPorFila = new Map<number, number>()
+    let siguiente = 1
+    origenBytes.forEach(indice => {
+        if (!idPorFila.has(indice)) idPorFila.set(indice, siguiente++)
+    })
+
+    return {
+        asm: asm.map((fila, indice) => ({ ...fila, id: idPorFila.get(indice) ?? null })),
+        co: co.map((fila, k) => ({ ...fila, id: idPorFila.get(origenBytes[k]) ?? 0 }))
+    }
 }

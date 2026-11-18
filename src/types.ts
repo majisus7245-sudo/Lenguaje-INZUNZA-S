@@ -52,3 +52,15 @@ export type FilaCO = {
     contenido: string
     hex: string
 }
+
+// ===================================================================
+// IDs para relacionar el Código intermedio con el Código objeto
+// ===================================================================
+
+// Fila del ensamblador con su ID. Es null en directivas y etiquetas,
+// porque esas filas no generan bytes.
+export type FilaASMConId = FilaASM & { id: number | null }
+
+// Byte del código objeto con el ID de la instrucción o variable de la que salió.
+// Una instrucción de varios bytes repite su ID en cada fila.
+export type FilaCOConId = FilaCO & { id: number }
