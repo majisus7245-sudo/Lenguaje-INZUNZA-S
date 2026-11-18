@@ -10,9 +10,15 @@ type Operando =
     | { tipo: "reg"; nombre: string; bits: 8 | 16; codigo: number }
     | { tipo: "seg"; nombre: string; codigo: number }
     | { tipo: "inm"; valor: number }
-    | { tipo: "mem"; base?: string; index?: string; disp: number; simbolo?: string }
+    | { tipo: "mem"; base?: string; index?: string; disp: number; simbolo?: string; bits?: 8 | 16 }
 
 type MapaSimbolos = Map<string, number>
+type MapaTamanos = Map<string, 8 | 16>
+
+// true si el operando es de 8 bits (registro de 8 bits o variable declarada con DB).
+function es8Bits(op: Operando): boolean {
+    return (op.tipo === "reg" || op.tipo === "mem") && op.bits === 8
+}
 
 const REG8: Record<string, number> = { AL: 0, CL: 1, DL: 2, BL: 3, AH: 4, CH: 5, DH: 6, BH: 7 }
 const REG16: Record<string, number> = { AX: 0, CX: 1, DX: 2, BX: 3, SP: 4, BP: 5, SI: 6, DI: 7 }
@@ -113,7 +119,7 @@ function parsearMemoria(contenido: string, simbolos: MapaSimbolos): Operando {
     return { tipo: "mem", base, index, disp }
 }
 
-function parsearOperando(texto: string, simbolos: MapaSimbolos): Operando {
+function parsearOperando(texto: string, simbolos: MapaSimbolos, tamanos?: MapaTamanos): Operando {
     const t = texto.trim().toUpperCase()
     if (REG8[t] !== undefined) return { tipo: "reg", nombre: t, bits: 8, codigo: REG8[t] }
     if (REG16[t] !== undefined) return { tipo: "reg", nombre: t, bits: 16, codigo: REG16[t] }
@@ -121,7 +127,7 @@ function parsearOperando(texto: string, simbolos: MapaSimbolos): Operando {
     const numero = parsearNumero(t)
     if (numero !== null) return { tipo: "inm", valor: numero }
     if (t.startsWith("[") && t.endsWith("]")) return parsearMemoria(t.slice(1, -1), simbolos)
-    return { tipo: "mem", disp: simbolos.get(t) ?? 0, simbolo: t }
+    return { tipo: "mem", disp: simbolos.get(t) ?? 0, simbolo: t, bits: tamanos?.get(t) }
 }
 
 function modrmMemoria(op: Extract<Operando, { tipo: "mem" }>, reg: number): number[] {
@@ -175,9 +181,17 @@ export class GeneradorCodigoObjeto {
     private filas: FilaASM[]
     private modosSalto: Map<number, "short" | "near"> = new Map()
     private saltosFueraDeRango: Set<number> = new Set()
+    // Tamaño de cada variable según su directiva: DB = 8 bits, DW = 16 bits.
+    private tamanos: MapaTamanos = new Map()
 
     constructor(filas: FilaASM[]) {
         this.filas = filas
+        filas.forEach(f => {
+            const instr = f.instruccion.toUpperCase()
+            if (f.etiqueta && (instr === "DB" || instr === "DW")) {
+                this.tamanos.set(f.etiqueta.toUpperCase(), instr === "DB" ? 8 : 16)
+            }
+        })
     }
 
     public generar(): FilaCO[] {
@@ -262,8 +276,8 @@ export class GeneradorCodigoObjeto {
     ): number[] {
         const instr = f.instruccion.toUpperCase()
         const partes = dividedor(f.operandos)
-        const a = partes[0] ? parsearOperando(partes[0], simbolos) : undefined
-        const b = partes[1] ? parsearOperando(partes[1], simbolos) : undefined
+        const a = partes[0] ? parsearOperando(partes[0], simbolos, this.tamanos) : undefined
+        const b = partes[1] ? parsearOperando(partes[1], simbolos, this.tamanos) : undefined
 
         if (instr === "DW" || instr === "DB") return bytesDeDatos(instr, f.operandos)
 
@@ -281,14 +295,13 @@ export class GeneradorCodigoObjeto {
         if (ALU[instr]) return this.codificarAlu(instr, a, b)
         if (instr === "MUL" || instr === "DIV") {
             if (!a) return []
-            const es8 = a.tipo === "reg" && a.bits === 8
-            return [(es8 ? 0xF6 : 0xF7), ...modrmOperando(a, instr === "MUL" ? 4 : 6)]
+            return [(es8Bits(a) ? 0xF6 : 0xF7), ...modrmOperando(a, instr === "MUL" ? 4 : 6)]
         }
         if (instr === "INC" || instr === "DEC") {
             if (!a) return []
             const ext = instr === "INC" ? 0 : 1
             if (a.tipo === "reg" && a.bits === 16) return [(instr === "INC" ? 0x40 : 0x48) + a.codigo]
-            return [(a.tipo === "reg" && a.bits === 8) ? 0xFE : 0xFF, ...modrmOperando(a, ext)]
+            return [es8Bits(a) ? 0xFE : 0xFF, ...modrmOperando(a, ext)]
         }
         if (instr === "PUSH" || instr === "POP") {
             if (!a || a.tipo !== "reg") return []
@@ -328,8 +341,10 @@ export class GeneradorCodigoObjeto {
         }
 
         if (b.tipo === "inm") {
-            const opcode = a.tipo === "mem" && (b.valor >= -128 && b.valor <= 127) ? 0xC6 : 0xC7
-            return [opcode, ...modrmOperando(a, 0), ...bytesInmediato(b.valor, opcode === 0xC6 ? 8 : 16)]
+            // El tamaño lo decide la variable destino (DB -> C6 + 1 byte, DW -> C7 + 2 bytes),
+            // no el valor del número.
+            const ocho = es8Bits(a)
+            return [ocho ? 0xC6 : 0xC7, ...modrmOperando(a, 0), ...bytesInmediato(b.valor, ocho ? 8 : 16)]
         }
         if (b.tipo === "seg") return [0x8C, ...modrmOperando(a, b.codigo)]
 
@@ -346,7 +361,7 @@ export class GeneradorCodigoObjeto {
             if (esAcumulador && (a.bits === 16 || (a.bits === 8 && cabeEn8(b.valor)))) {
                 return [base + (a.bits === 8 ? 4 : 5), ...bytesInmediato(b.valor, a.bits)]
             }
-            if (a.tipo === "reg" && a.bits === 8) {
+            if (es8Bits(a)) {
                 return [0x80, ...modrmOperando(a, ext), b.valor & 0xFF]
             }
             if (cabeEn8(b.valor)) return [0x83, ...modrmOperando(a, ext), b.valor & 0xFF]
